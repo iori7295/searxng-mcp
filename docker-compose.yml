@@ -1,0 +1,48 @@
+# searxng-mcp infrastructure
+# Start:  docker compose up -d
+# Stop:   docker compose down
+#
+# After starting, configure your MCP client to run the server:
+#   node /path/to/searxng-mcp/build/src/index.js
+# or:
+#   npx @iori7295/searxng-mcp
+
+services:
+  # ── Required ─────────────────────────────────────────────
+  searxng:
+    image: searxng/searxng:latest
+    ports: ["8888:8080"]
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+    volumes:
+      - searxng-data:/etc/searxng:rw
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID, DAC_OVERRIDE]
+    restart: unless-stopped
+    mem_limit: 256m
+
+  # ── Optional: JS-aware page scraping (tier 1) ────────────
+  firecrawl:
+    image: ghcr.io/mendableai/firecrawl:latest
+    ports: ["3002:3002"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3002
+      NUM_WORKERS: 2
+      USE_DB_AUTHENTICATION: "false"
+      REDIS_URL: redis://valkey:6379
+    depends_on: [valkey]
+    restart: unless-stopped
+    mem_limit: 2g
+    profiles: ["full"]
+
+  # ── Optional: result cache ───────────────────────────────
+  valkey:
+    image: valkey/valkey:latest
+    ports: ["6379:6379"]
+    restart: unless-stopped
+    mem_limit: 128m
+    profiles: ["full"]
+
+volumes:
+  searxng-data:
