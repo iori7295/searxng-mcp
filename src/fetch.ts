@@ -6,6 +6,7 @@ import ipaddr from "ipaddr.js";
 import { parseHTML } from "linkedom";
 import { cacheDel, cacheGet, cacheSet, fetchCacheKey } from "./cache.js";
 import { chunkPages } from "./chunker.js";
+import { isCircuitOpen, recordFailure, recordSuccess } from "./circuit.js";
 import {
   CRAWL4AI_API_TOKEN,
   CRAWL4AI_URL,
@@ -414,37 +415,6 @@ async function crawl4aiFetch(
   } finally {
     clearTimeout(timeout);
   }
-}
-
-// Circuit breaker state for external fetch services
-export const circuitState = new Map<
-  string,
-  { failures: number; openUntil: number }
->();
-
-export function isCircuitOpen(service: string): boolean {
-  const state = circuitState.get(service);
-  if (!state) return false;
-  if (state.failures < 3) return false;
-  if (Date.now() >= state.openUntil) {
-    circuitState.delete(service);
-    return false;
-  }
-  return true;
-}
-
-export function recordFailure(service: string): void {
-  const state = circuitState.get(service) ?? { failures: 0, openUntil: 0 };
-  state.failures++;
-  if (state.failures >= 3) {
-    state.openUntil = Date.now() + 5 * 60 * 1000;
-    logger.warn(`Circuit breaker: ${service} opened for 5 minutes`);
-  }
-  circuitState.set(service, state);
-}
-
-export function recordSuccess(service: string): void {
-  circuitState.delete(service);
 }
 
 const CHROME_UA =

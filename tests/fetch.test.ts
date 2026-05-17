@@ -3,12 +3,12 @@ import { parseHTML } from "linkedom";
 import { PDFParse } from "pdf-parse";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  assertPublicUrl,
   circuitState,
   isCircuitOpen,
   recordFailure,
   recordSuccess,
-} from "../src/fetch.js";
+} from "../src/circuit.js";
+import { assertPublicUrl } from "../src/fetch.js";
 import type {
   GitHubCommentResponse,
   GitHubIssueResponse,

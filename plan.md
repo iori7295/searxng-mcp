@@ -39,6 +39,14 @@
 | 5.4 | README に Crawl4AI を cascade 説明に追記 | README.md | ✅ |
 | 5.5 | domains.ts watcher コメント修正（再セットアップしないと明記） | domains.ts | ✅ |
 
+## Phase 6: Code Review Fixes (3rd pass) 🟡
+
+| ID | タスク | ファイル | 状態 |
+|----|--------|----------|------|
+| 6.1 | circuit breaker を独立モジュールに抽出（循環依存解消） | src/circuit.ts (new), fetch.ts, embedder.ts | ✅ |
+| 6.2 | getValkey のレースコンディション修正（shared connection promise） | cache.ts | ✅ |
+| 6.3 | llm.ts JSON 抽出の貪欲マッチ修正 + safeParse 失敗時ログ追加 | llm.ts | ✅ |
+
 ### 不採用（検討済み）
 
 | ID | タスク | 理由 |

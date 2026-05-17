@@ -4,10 +4,15 @@ import { VALKEY_URL } from "./config.js";
 import { logger } from "./logger.js";
 
 let valkey: Valkey | null = null;
+let connecting: Promise<void> | null = null;
 
 export async function getValkey(): Promise<Valkey | null> {
   if (valkey !== null) return valkey;
-  try {
+  if (connecting) {
+    await connecting;
+    return valkey;
+  }
+  connecting = (async () => {
     const client = new Valkey(VALKEY_URL, {
       lazyConnect: true,
       enableReadyCheck: false,
@@ -24,11 +29,15 @@ export async function getValkey(): Promise<Valkey | null> {
     await client.connect();
     valkey = client;
     logger.info(`Cache connected to ${VALKEY_URL}`);
-    return valkey;
+  })();
+  try {
+    await connecting;
   } catch {
     logger.warn("Cache unavailable — running without cache");
-    return null;
+  } finally {
+    connecting = null;
   }
+  return valkey;
 }
 
 export function searchCacheKey(

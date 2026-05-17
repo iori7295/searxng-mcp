@@ -1,5 +1,5 @@
+import { isCircuitOpen, recordFailure, recordSuccess } from "./circuit.js";
 import { EMBEDDING_MODEL, EMBEDDING_URL } from "./config.js";
-import { isCircuitOpen, recordFailure, recordSuccess } from "./fetch.js";
 
 const E5_QUERY_PREFIX = "query: ";
 const E5_PASSAGE_PREFIX = "passage: ";

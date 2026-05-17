@@ -6,6 +6,7 @@ import {
   LLM_MODEL_EXPAND,
   LLM_MODEL_SUMMARY,
 } from "./config.js";
+import { logger } from "./logger.js";
 import { rerankChunks } from "./reranker.js";
 import { countTokens, truncateToBudget } from "./tokenizer.js";
 import type { Citation, OpenAIChatResponse, SummaryResult } from "./types.js";
@@ -68,6 +69,31 @@ export async function expandQuery(query: string): Promise<string[]> {
   }
 }
 
+/** Extract first valid JSON object from LLM response text.
+ *  Scans for balanced braces, skipping non-JSON fragments like code examples. */
+function extractJson(content: string): Record<string, unknown> | null {
+  let start = 0;
+  for (;;) {
+    start = content.indexOf("{", start);
+    if (start === -1) return null;
+    let depth = 0;
+    for (let i = start; i < content.length; i++) {
+      if (content[i] === "{") depth++;
+      if (content[i] === "}") depth--;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(content.slice(start, i + 1));
+          if (typeof parsed === "object" && parsed !== null) return parsed;
+        } catch {
+          // Not valid JSON — continue to next {
+        }
+        break;
+      }
+    }
+    start++;
+  }
+}
+
 export async function summarizePages(
   query: string,
   pages: Array<{ title: string; url: string; text: string }>,
@@ -126,9 +152,19 @@ export async function summarizePages(
       AbortSignal.timeout(45000),
     );
 
-    const raw = (content.match(/\{[\s\S]*\}/) ?? [content])[0];
-    const parsed = SummarySchema.safeParse(JSON.parse(raw));
-    if (!parsed.success) return { summary: "", citations: [] };
+    const raw = extractJson(content);
+    if (!raw) {
+      logger.warn(
+        "No JSON found in LLM summary response: %s",
+        content.slice(0, 100),
+      );
+      return { summary: "", citations: [] };
+    }
+    const parsed = SummarySchema.safeParse(raw);
+    if (!parsed.success) {
+      logger.warn("Summary schema validation failed: %s", parsed.error.message);
+      return { summary: "", citations: [] };
+    }
     return parsed.data;
   } catch {
     return { summary: "", citations: [] };
