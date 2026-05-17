@@ -6,23 +6,23 @@ import { ENABLE_VECTOR_STORE } from "./config.js";
 import { logger } from "./logger.js";
 import { registerTools } from "./tools.js";
 
-// Phase 2: Health checks
+// Phase 2: Health checks (fire-and-forget — don't block startup)
 if (ENABLE_VECTOR_STORE) {
-  try {
-    const { getVectorStore } = await import("./vectorstore.js");
-    const store = await getVectorStore();
-    if (store) logger.info("Vector store ready");
-    else logger.warn("Vector store unavailable — running without it");
-  } catch (e) {
-    logger.warn("Vector store init failed: %s", (e as Error).message);
-  }
-  try {
-    const { embedQuery } = await import("./embedder.js");
-    await embedQuery("health check");
-    logger.info("TEI embedder reachable");
-  } catch (e) {
-    logger.warn("TEI embedder unreachable: %s", (e as Error).message);
-  }
+  import("./vectorstore.js").then(({ getVectorStore }) =>
+    getVectorStore().then(
+      (store) => {
+        if (store) logger.info("Vector store ready");
+        else logger.warn("Vector store unavailable — running without it");
+      },
+      (e) => logger.warn("Vector store init failed: %s", (e as Error).message),
+    ),
+  );
+  import("./embedder.js").then(({ embedQuery }) =>
+    embedQuery("health check").then(
+      () => logger.info("TEI embedder reachable"),
+      (e) => logger.warn("TEI embedder unreachable: %s", (e as Error).message),
+    ),
+  );
 }
 
 const server = new McpServer({

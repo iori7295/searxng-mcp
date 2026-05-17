@@ -4,7 +4,7 @@ import { Readability } from "@mozilla/readability";
 import { Defuddle } from "defuddle/node";
 import ipaddr from "ipaddr.js";
 import { parseHTML } from "linkedom";
-import { cacheGet, cacheSet, fetchCacheKey } from "./cache.js";
+import { cacheDel, cacheGet, cacheSet, fetchCacheKey } from "./cache.js";
 import { chunkPages } from "./chunker.js";
 import {
   CRAWL4AI_API_TOKEN,
@@ -29,6 +29,53 @@ import type {
 import { upsertChunks } from "./vectorstore.js";
 
 const FETCH_BUFFER = 50_000;
+const PDF_BINARY_LIMIT = 5_000_000; // 5MB max for PDF binary download
+
+// Read response body as text, stopping at `limit` bytes to avoid buffering huge payloads
+async function readBodyText(res: Response, limit: number): Promise<string> {
+  const body = res.body;
+  if (!body) return "";
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  const parts: string[] = [];
+  let len = 0;
+  try {
+    while (len < limit) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        const s = decoder.decode(value, { stream: true });
+        parts.push(s);
+        len += s.length;
+      }
+    }
+  } finally {
+    reader.cancel();
+  }
+  return parts.join("").slice(0, limit);
+}
+
+// Read response body as binary Buffer, stopping at `limit` bytes
+async function readBodyBuffer(res: Response, limit: number): Promise<Buffer> {
+  const body = res.body;
+  if (!body) return Buffer.alloc(0);
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let len = 0;
+  try {
+    while (len < limit) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        len += value.length;
+      }
+    }
+  } finally {
+    reader.cancel();
+  }
+  return Buffer.concat(chunks);
+}
 
 async function resolveAndCheckIp(raw: string): Promise<void> {
   const addr = ipaddr.parse(raw);
@@ -428,8 +475,15 @@ async function rawFetch(
   // PDF → extract text via pdf-parse
   const ct = res.headers.get("content-type") ?? "";
   if (ct.includes("pdf")) {
+    const buf = await readBodyBuffer(res, PDF_BINARY_LIMIT);
+    if (buf.length >= PDF_BINARY_LIMIT) {
+      return {
+        title: url,
+        url,
+        text: "[PDF content too large — download the file directly to view]",
+      };
+    }
     const { PDFParse } = await import("pdf-parse");
-    const buf = Buffer.from(await res.arrayBuffer());
     const parser = new PDFParse({ data: buf });
     const result = await parser.getText();
     const text = result.text.slice(0, FETCH_BUFFER);
@@ -438,7 +492,7 @@ async function rawFetch(
       : { title: url, url, text: "[PDF content could not be extracted]" };
   }
 
-  let text = (await res.text()).slice(0, FETCH_BUFFER);
+  let text = await readBodyText(res, FETCH_BUFFER);
   // Extract <title> before processing
   const titleMatch = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   let title = titleMatch ? titleMatch[1].trim() : url;
@@ -514,7 +568,7 @@ export async function fetchPage(
       };
     } catch {
       logger.warn("Corrupted fetch cache entry, removing");
-      cacheSet(key, "", 0).catch(() => {});
+      cacheDel(key);
     }
   }
 

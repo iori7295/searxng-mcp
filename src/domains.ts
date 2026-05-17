@@ -73,13 +73,16 @@ export function applyDomainFilters(
     (r) => !blockList.some((pat) => urlMatchesDomain(r.url, pat)),
   );
 
-  // Stable sort: boosted domains float to the top, order within each group preserved
-  const boosted = filtered.filter((r) =>
-    boostList.some((pat) => urlMatchesDomain(r.url, pat)),
-  );
-  const normal = filtered.filter(
-    (r) => !boostList.some((pat) => urlMatchesDomain(r.url, pat)),
-  );
+  // Single pass: boostList evaluated once per result (avoids double URL parsing)
+  const boosted: SearxResult[] = [];
+  const normal: SearxResult[] = [];
+  for (const r of filtered) {
+    if (boostList.some((pat) => urlMatchesDomain(r.url, pat))) {
+      boosted.push(r);
+    } else {
+      normal.push(r);
+    }
+  }
 
   return [...boosted, ...normal];
 }

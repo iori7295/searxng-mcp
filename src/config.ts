@@ -1,3 +1,5 @@
+import { logger } from "./logger.js";
+
 export const SEARXNG_URL = process.env.SEARXNG_URL ?? "http://localhost:8081";
 export const FIRECRAWL_URL =
   process.env.FIRECRAWL_URL ?? "http://localhost:3002";
@@ -6,13 +8,13 @@ export const FIRECRAWL_API_KEY =
 export const RERANKER_URL = process.env.RERANKER_URL ?? "http://localhost:8787";
 export const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 export const VALKEY_URL = process.env.VALKEY_URL ?? "redis://localhost:6379";
-export const CACHE_TTL_SECONDS = parseInt(
-  process.env.CACHE_TTL_SECONDS ?? "3600",
-  10,
+export const CACHE_TTL_SECONDS = Math.max(
+  parseInt(process.env.CACHE_TTL_SECONDS ?? "3600", 10) || 3600,
+  0,
 );
-export const FETCH_CACHE_TTL_SECONDS = parseInt(
-  process.env.FETCH_CACHE_TTL_SECONDS ?? "86400",
-  10,
+export const FETCH_CACHE_TTL_SECONDS = Math.max(
+  parseInt(process.env.FETCH_CACHE_TTL_SECONDS ?? "86400", 10) || 86400,
+  0,
 );
 export const LLM_BASE_URL =
   process.env.LLM_BASE_URL ?? process.env.OLLAMA_URL ?? "";
@@ -39,8 +41,9 @@ export const RERANK_RECENCY_WEIGHT = (() => {
     return 0;
   }
   if (v > 1) {
-    console.warn(
-      `[searxng-mcp] RERANK_RECENCY_WEIGHT=${v} exceeds 1.0; recency may dominate relevance scores.`,
+    logger.warn(
+      "RERANK_RECENCY_WEIGHT=%d exceeds 1.0; recency may dominate relevance scores.",
+      v,
     );
   }
   return v;
@@ -51,12 +54,15 @@ export const EMBEDDING_URL =
   process.env.EMBEDDING_URL ?? "http://localhost:8080";
 export const EMBEDDING_MODEL =
   process.env.EMBEDDING_MODEL ?? "intfloat/multilingual-e5-small";
-export const EMBEDDING_DIM = parseInt(process.env.EMBEDDING_DIM ?? "384", 10);
+export const EMBEDDING_DIM = Math.max(
+  parseInt(process.env.EMBEDDING_DIM ?? "384", 10) || 384,
+  1,
+);
 export const LANCEDB_PATH = process.env.LANCEDB_PATH ?? "./data/lancedb";
 export const ENABLE_VECTOR_STORE = process.env.ENABLE_VECTOR_STORE === "true";
-export const TOP_CHUNKS_PER_PAGE = parseInt(
-  process.env.TOP_CHUNKS_PER_PAGE ?? "3",
-  10,
+export const TOP_CHUNKS_PER_PAGE = Math.max(
+  parseInt(process.env.TOP_CHUNKS_PER_PAGE ?? "3", 10) || 3,
+  1,
 );
 export const VECTOR_CHUNK_SIZE = Math.max(
   Number.parseInt(process.env.VECTOR_CHUNK_SIZE ?? "500", 10) || 500,
@@ -68,8 +74,8 @@ export const VECTOR_CHUNK_OVERLAP = Math.max(
 );
 
 // Phase 3: Context budget
-export const LLM_CONTEXT_BUDGET = parseInt(
-  process.env.LLM_CONTEXT_BUDGET ?? "4000",
-  10,
+export const LLM_CONTEXT_BUDGET = Math.max(
+  parseInt(process.env.LLM_CONTEXT_BUDGET ?? "4000", 10) || 4000,
+  256,
 );
 export const USE_CHUNKS_DEFAULT = process.env.USE_CHUNKS_DEFAULT === "true";

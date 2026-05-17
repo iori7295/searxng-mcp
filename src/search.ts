@@ -1,4 +1,4 @@
-import { cacheGet, cacheSet, searchCacheKey } from "./cache.js";
+import { cacheDel, cacheGet, cacheSet, searchCacheKey } from "./cache.js";
 import {
   CACHE_TTL_SECONDS,
   EXPAND_QUERIES_DEFAULT,
@@ -69,7 +69,7 @@ export async function searxSearch(
       return applyDomainFilters(results, domainProfile);
     } catch {
       logger.warn("Corrupted cache entry, removing");
-      cacheSet(key, "", 0).catch(() => {}); // best-effort cleanup
+      cacheDel(key); // best-effort cleanup
     }
   }
 

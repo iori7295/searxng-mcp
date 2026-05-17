@@ -69,6 +69,16 @@ export async function cacheSet(
   }
 }
 
+export async function cacheDel(key: string): Promise<void> {
+  try {
+    const client = await getValkey();
+    if (!client) return;
+    await client.del(key);
+  } catch {
+    // Best-effort — never throw
+  }
+}
+
 export async function cacheClear(pattern: string): Promise<number> {
   try {
     const client = await getValkey();
