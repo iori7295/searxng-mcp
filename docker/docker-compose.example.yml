@@ -1,0 +1,70 @@
+# Reference docker-compose for searxng-mcp Phase 2
+# Provides: SearXNG + Firecrawl + Valkey + TEI (embed + rerank)
+#
+# Usage:
+#   docker compose -f docker-compose.example.yml up -d
+#   export SEARXNG_URL=http://localhost:8081
+#   export FIRECRAWL_URL=http://localhost:3002
+#   export EMBEDDING_URL=http://localhost:8080
+#   export RERANKER_URL=http://localhost:8082
+#   export VALKEY_URL=redis://localhost:6379
+#   export ENABLE_VECTOR_STORE=true
+#   npx @iori7295/searxng-mcp
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    ports: ["8081:8080"]
+    environment:
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
+    volumes:
+      - ./searxng-data:/etc/searxng:rw
+      - ./searxng-themes:/usr/local/searxng/searx/static/themes:rw
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID, DAC_OVERRIDE]
+    restart: unless-stopped
+    mem_limit: 256m
+
+  firecrawl:
+    image: ghcr.io/mendableai/firecrawl:latest
+    ports: ["3002:3002"]
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3002
+      - NUM_WORKERS=2
+      - USE_DB_AUTHENTICATION=false
+      - REDIS_URL=redis://valkey:6379
+    depends_on: [valkey]
+    restart: unless-stopped
+    mem_limit: 2g
+
+  valkey:
+    image: valkey/valkey:latest
+    ports: ["6379:6379"]
+    restart: unless-stopped
+    mem_limit: 128m
+
+  tei-embed:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-1.9
+    ports: ["8080:80"]
+    environment:
+      - MODEL_ID=intfloat/multilingual-e5-small
+      - MAX_BATCH_TOKENS=8192
+    volumes:
+      - tei-data:/data
+    restart: unless-stopped
+    mem_limit: 2g
+
+  tei-rerank:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-1.9
+    ports: ["8082:80"]
+    environment:
+      - MODEL_ID=BAAI/bge-reranker-base
+      - MAX_BATCH_TOKENS=8192
+    volumes:
+      - tei-data:/data
+    restart: unless-stopped
+    mem_limit: 2g
+
+volumes:
+  tei-data:

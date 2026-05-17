@@ -1,0 +1,52 @@
+{
+  "boost": [
+    "servethehome.com",
+    "arstechnica.com",
+    "level1techs.com",
+    "github.com",
+    "stackoverflow.com",
+    "superuser.com",
+    "unix.stackexchange.com"
+  ],
+  "block": [
+    "pinterest.com",
+    "quora.com",
+    "w3schools.com",
+    "geeksforgeeks.org",
+    "tutorialspoint.com",
+    "javatpoint.com"
+  ],
+  "profiles": {
+    "homelab": {
+      "boost": [
+        "reddit.com/r/homelab",
+        "reddit.com/r/selfhosted",
+        "forums.servethehome.com",
+        "linuxserver.io",
+        "docs.docker.com",
+        "wiki.archlinux.org"
+      ],
+      "block": []
+    },
+    "dev": {
+      "boost": [
+        "stackoverflow.com",
+        "github.com",
+        "dev.to",
+        "docs.npmjs.com",
+        "developer.mozilla.org"
+      ],
+      "block": []
+    },
+    "ja": {
+      "boost": [
+        "zenn.dev",
+        "qiita.com",
+        "developer.mozilla.org",
+        "docs.oracle.com",
+        "learn.microsoft.com"
+      ],
+      "block": []
+    }
+  }
+}
