@@ -610,7 +610,12 @@ export async function fetchPage(
 
   // Phase 2: Auto-index to LanceDB (fire-and-forget)
   if (ENABLE_VECTOR_STORE && result.text.length > 100) {
-    indexToVectorStore(result, url).catch(() => {});
+    indexToVectorStore(result, url).catch((e) => {
+      logger.warn(
+        "Auto-index to vector store failed: %s",
+        (e as Error).message,
+      );
+    });
   }
 
   return {

@@ -15,10 +15,10 @@ Built with [Claude Code](https://claude.ai/code) using the multi-agent workflow 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `search` | Search via SearXNG with local reranking. Fetches a wider result pool, reranks by relevance, returns top N. | `query`, `num_results` (1–20), `category`, `time_range`, `domain_profile`, `expand` |
-| `search_and_fetch` | Search, rerank, then fetch full content of the top result(s) using the fetch cascade (Firecrawl → raw HTTP). | `query`, `category`, `time_range`, `fetch_count` (1–3), `domain_profile`, `expand` |
+| `search_and_fetch` | Search, rerank, then fetch full content of the top result(s) using the fetch cascade (Firecrawl → Crawl4AI → raw HTTP + Defuddle/Readability). | `query`, `category`, `time_range`, `fetch_count` (1–3), `domain_profile`, `expand` |
 | `search_and_summarize` | Search, fetch top results, then synthesize a summary with citations via LLM. Falls back to raw fetched content if the LLM is unavailable. | `query`, `fetch_count` (1–5), `category`, `time_range`, `domain_profile`, `expand` |
 | `vector_search` | Search previously fetched pages by semantic similarity. Uses hybrid BM25+vector search with reranking. Returns the most relevant chunks, drastically reducing LLM token usage. Requires `ENABLE_VECTOR_STORE=true` and running TEI services. | `query`, `top_k` (1–20), `domain`, `since_days` |
-| `fetch_url` | Fetch and extract readable markdown from any public URL. GitHub URLs use the GitHub API (Issues/PRs include body + comments + reactions); PDF URLs are parsed via `pdf-parse`; all others use the fetch cascade (Firecrawl → raw HTTP + Defuddle/Readability extraction). Use `start_index` to read beyond the 8,000-char window; use `depth` (2) to follow linked pages. Supports `mode` parameter: `full` (default), `chunks`, or `summary` (LLM-generated). | `url`, `domain_profile`, `start_index`, `depth`, `mode` |
+| `fetch_url` | Fetch and extract readable markdown from any public URL. GitHub URLs use the GitHub API (Issues/PRs include body + comments + reactions); PDF URLs are parsed via `pdf-parse`; all others use the fetch cascade (Firecrawl → Crawl4AI → raw HTTP + Defuddle/Readability extraction). Use `start_index` to read beyond the 8,000-char window; use `depth` (2) to follow linked pages. Supports `mode` parameter: `full` (default), `chunks`, or `summary` (LLM-generated). | `url`, `domain_profile`, `start_index`, `depth`, `mode` |
 | `clear_cache` | Purge the search cache, fetch cache, or both. Useful when researching fast-moving topics where cached results may be stale. | `target` (`search`, `fetch`, `all`) |
 
 ### Parameters
@@ -47,9 +47,10 @@ MCP client (stdio)
       │                       (TEI / Jina / FlashRank; falls back to SearXNG order)
       ├── fetch content ────┬→ GitHub API (github.com)      → markdown (Issues/PRs + comments + reactions)
       │                     ├→ Firecrawl ($FIRECRAWL_URL)   → page markdown (tier 1)
-      │                     ├→ pdf-parse (application/pdf)  → page text (tier 2, automatic)
-      │                     ├→ Raw HTTP + Defuddle          → page text (tier 3)
-      │                     └──→ Readability fallback       → plain text (tier 3b)
+      │                     ├→ Crawl4AI ($CRAWL4AI_URL)     → page markdown (tier 2, opt.)
+      │                     ├→ pdf-parse (application/pdf)  → page text (tier 3, auto)
+      │                     ├→ Raw HTTP + Defuddle          → page text (tier 4)
+      │                     └──→ Readability fallback       → plain text (tier 4b)
       ├── index (opt.) ─────→ TEI embed + LanceDB           → hybrid vector store (auto on fetch)
       ├── vector_search ────→ LanceDB hybrid (BM25+vector)  → reranked chunks → LLM
       └── summarize (opt.) →  LLM ($LLM_BASE_URL)            → synthesized summary

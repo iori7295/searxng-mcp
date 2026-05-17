@@ -100,10 +100,13 @@ export async function hybridSearch(
       // Strict validation: only allow valid hostname characters
       // to prevent SQL injection via the WHERE clause
       if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(filters.domain)) {
-        logger.warn("Invalid domain filter: %s", filters.domain);
-      } else {
-        q = q.where(`domain = '${filters.domain.replace(/'/g, "''")}'`);
+        logger.warn(
+          "Invalid domain filter, returning empty: %s",
+          filters.domain,
+        );
+        return [];
       }
+      q = q.where(`domain = '${filters.domain.replace(/'/g, "''")}'`);
     }
     if (filters?.sinceDays) {
       const cutoff = Date.now() - filters.sinceDays * 86_400_000;

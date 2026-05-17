@@ -23,11 +23,15 @@ export function loadDomainConfig(): void {
 
 loadDomainConfig();
 // Hot-reload via inotify (event-driven, no polling, won't keep process alive)
+// Note: if domains.json does not exist at startup, the watcher setup fails and
+// is not retried. The file must exist before the process starts for hot-reload
+// to work. This is a known limitation: creating the file after startup requires
+// a server restart.
 try {
   const watcher = watch(DOMAINS_PATH, loadDomainConfig);
   watcher.unref();
 } catch {
-  // File doesn't exist yet — watcher will be set up when it appears
+  // domains.json not found — watcher will NOT be set up later
 }
 
 export function getBlockList(profile?: string): string[] {

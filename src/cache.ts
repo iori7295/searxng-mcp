@@ -73,7 +73,7 @@ export async function cacheDel(key: string): Promise<void> {
   try {
     const client = await getValkey();
     if (!client) return;
-    await client.del(key);
+    await client.unlink(key);
   } catch {
     // Best-effort — never throw
   }
@@ -97,7 +97,10 @@ export async function cacheClear(pattern: string): Promise<number> {
       keys.push(...result[1]);
     } while (cursor !== "0");
     if (keys.length === 0) return 0;
-    await client.del(keys);
+    // Batch UNLINK 100 keys at a time to avoid blocking Valkey
+    for (let i = 0; i < keys.length; i += 100) {
+      await client.unlink(keys.slice(i, i + 100));
+    }
     return keys.length;
   } catch {
     return 0;
