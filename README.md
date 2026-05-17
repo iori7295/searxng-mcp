@@ -54,6 +54,7 @@ MCP client (stdio)
       ├── index (opt.) ─────→ TEI embed + LanceDB           → hybrid vector store (auto on fetch)
       ├── vector_search ────→ LanceDB hybrid (BM25+vector)  → reranked chunks → LLM
       └── summarize (opt.) →  LLM ($LLM_BASE_URL)            → synthesized summary
+```
 
 ![Fetch routing](assets/fetch-routing.drawio.svg)
 
