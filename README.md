@@ -4,7 +4,7 @@
 [![CI](https://github.com/iori7295/searxng-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/iori7295/searxng-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An MCP server for private web search via a self-hosted [SearXNG](https://github.com/searxng/searxng) instance. Results are reranked by a local ML model (FlashRank, Jina, or TEI), full-page content is fetched via a three-tier cascade, and an optional LLM provides query expansion and synthesized summaries. Supports optional **hybrid vector search** with LanceDB + TEI embeddings for semantic chunk retrieval.
+An MCP server for private web search via a self-hosted [SearXNG](https://github.com/searxng/searxng) instance. Results are reranked by a local ML model (FlashRank, Jina, or TEI), with **domain-aware MMR diversification** to avoid same-source bias. Full-page content is fetched via a three-tier cascade, **cross-query knowledge** surfaces previously fetched content in future searches, and an optional LLM provides query expansion and synthesized summaries. Supports optional **hybrid vector search** with LanceDB + TEI embeddings for semantic chunk retrieval. **Infoboxes, answers, and suggestions** from SearXNG are surfaced as structured data.
 
 Designed for use with Claude Code and LibreChat agents that need web search without sending queries to a third-party search API.
 
@@ -14,7 +14,7 @@ Built with [Claude Code](https://claude.ai/code) using the multi-agent workflow 
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
-| `search` | Search via SearXNG with local reranking. Fetches a wider result pool, reranks by relevance, returns top N. | `query`, `num_results` (1–20), `category`, `time_range`, `domain_profile`, `expand` |
+| `search` | Search via SearXNG with local reranking. Fetches a wider result pool, reranks by relevance, diversifies by domain (MMR), surfaces infoboxes/answers/suggestions, and enriches with previously fetched content. | `query`, `num_results` (1–30), `category`, `time_range`, `domain_profile`, `expand` |
 | `search_and_fetch` | Search, rerank, then fetch full content of the top result(s) using the fetch cascade (Firecrawl → Crawl4AI → raw HTTP + Defuddle/Readability). | `query`, `category`, `time_range`, `fetch_count` (1–3), `domain_profile`, `expand` |
 | `search_and_summarize` | Search, fetch top results, then synthesize a summary with citations via LLM. Falls back to raw fetched content if the LLM is unavailable. | `query`, `fetch_count` (1–5), `category`, `time_range`, `domain_profile`, `expand` |
 | `vector_search` | Search previously fetched pages by semantic similarity. Uses hybrid BM25+vector search with reranking. Returns the most relevant chunks, drastically reducing LLM token usage. Requires `ENABLE_VECTOR_STORE=true` and running TEI services. | `query`, `top_k` (1–20), `domain`, `since_days` |
@@ -144,7 +144,7 @@ All service URLs are configurable via environment variables.
 | `FETCH_CACHE_TTL_SECONDS` | `86400` | Fetched page cache TTL in seconds |
 | `LOG_LEVEL` | `info` | Pino log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal` |
 | `EXPAND_QUERIES` | `false` | Set to `true` to enable query expansion globally |
-| `SEARCH_MIN_INTERVAL_MS` | `2000` | Minimum interval between SearXNG requests (rate limiting) |
+| `SEARCH_MIN_INTERVAL_MS` | `500` | Minimum interval between SearXNG requests (rate limiting) |
 | `CHUNK_MAX_SIZE` | `800` | Max characters per chunk (`summarizePages`) |
 | `RERANK_RECENCY_WEIGHT` | `0.15` | Recency boost weight (0 = disabled, 1 = equal to relevance) |
 | `ENABLE_VECTOR_STORE` | `false` | Enable LanceDB + TEI hybrid vector search |
@@ -256,7 +256,7 @@ The `fetch_url` and `search_and_fetch` tools enforce strict SSRF protection via 
 
 ### Redirect protection
 
-HTTP redirects in raw fetch requests are blocked to prevent SSRF bypass via redirect chains to internal addresses.
+HTTP redirects in raw fetch requests are followed (up to 5 hops) with SSRF validation at each hop via `assertPublicUrl`. This allows `http://`→`https://` redirects while blocking any redirect to private/internal IP ranges.
 
 ### Dependency auditing
 
