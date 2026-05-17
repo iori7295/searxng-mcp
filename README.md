@@ -162,9 +162,22 @@ A reference `.env.example` is provided in the repository root — copy it to get
 cp .env.example .env
 ```
 
+## Quick start
+
+```bash
+git clone https://github.com/iori7295/searxng-mcp.git
+cd searxng-mcp
+docker compose up -d                              # SearXNG (required)
+docker compose --profile full up -d               # + Firecrawl + Valkey (optional)
+
+# Then register with your MCP client:
+node build/src/index.js
+# or: npx @iori7295/searxng-mcp
+```
+
 ## Install
 
-### npm (recommended)
+### npm
 
 ```bash
 npm install -g @iori7295/searxng-mcp
