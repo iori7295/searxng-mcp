@@ -392,7 +392,7 @@ export function registerTools(server: McpServer): void {
         };
       }
 
-      // Rerank via TEI/Jina for final ordering
+      // Rerank via TEI/Jina for final ordering (score order, not source order)
       const reranked = await rerankChunks(
         query,
         candidates.map((c, i) => ({
@@ -401,6 +401,8 @@ export function registerTools(server: McpServer): void {
           chunkIndex: (c.chunk_index as number) ?? 0,
         })),
         top_k,
+        undefined,
+        false,
       );
 
       const resultMap = new Map(candidates.map((c, i) => [i, c]));

@@ -129,6 +129,7 @@ export async function rerankChunks(
   chunks: TextChunk[],
   topN = 5,
   pages?: Array<{ title: string; url: string; text: string }>,
+  preserveOrder = true,
 ): Promise<TextChunk[]> {
   if (chunks.length === 0) return [];
   const documents = chunks.map((c) => {
@@ -141,12 +142,14 @@ export async function rerankChunks(
   try {
     const scoredItems = await callReranker(query, documents);
     if (scoredItems.length === 0) return roundRobinFallback(chunks, topN);
-    return scoredItems
+    const result = scoredItems
       .filter((r) => r.index >= 0 && r.index < chunks.length)
       .sort((a, b) => b.score - a.score)
-      .slice(0, topN)
-      .sort((a, b) => a.index - b.index) // restore original order
-      .map((r) => chunks[r.index]);
+      .slice(0, topN);
+    if (preserveOrder) {
+      result.sort((a, b) => a.index - b.index);
+    }
+    return result.map((r) => chunks[r.index]);
   } catch {
     return roundRobinFallback(chunks, topN);
   }

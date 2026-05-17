@@ -70,16 +70,23 @@ export async function expandQuery(query: string): Promise<string[]> {
 }
 
 /** Extract first valid JSON object from LLM response text.
- *  Scans for balanced braces, skipping non-JSON fragments like code examples. */
+ *  Scans for balanced braces with string literal awareness:
+ *  braces inside "..." are ignored so e.g. {"k": "} "} parses correctly. */
 function extractJson(content: string): Record<string, unknown> | null {
   let start = 0;
   for (;;) {
     start = content.indexOf("{", start);
     if (start === -1) return null;
     let depth = 0;
+    let inString = false;
     for (let i = start; i < content.length; i++) {
-      if (content[i] === "{") depth++;
-      if (content[i] === "}") depth--;
+      const c = content[i];
+      if (c === '"' && (i === start || content[i - 1] !== "\\")) {
+        inString = !inString;
+      }
+      if (inString) continue;
+      if (c === "{") depth++;
+      if (c === "}") depth--;
       if (depth === 0) {
         try {
           const parsed = JSON.parse(content.slice(start, i + 1));

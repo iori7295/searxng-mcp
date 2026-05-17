@@ -19,7 +19,7 @@ export function isCircuitOpen(service: string): boolean {
 export function recordFailure(service: string): void {
   const state = circuitState.get(service) ?? { failures: 0, openUntil: 0 };
   state.failures++;
-  if (state.failures >= 3) {
+  if (state.failures === 3) {
     state.openUntil = Date.now() + 5 * 60 * 1000;
     logger.warn(`Circuit breaker: ${service} opened for 5 minutes`);
   }

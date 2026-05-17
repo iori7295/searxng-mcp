@@ -47,6 +47,16 @@
 | 6.2 | getValkey のレースコンディション修正（shared connection promise） | cache.ts | ✅ |
 | 6.3 | llm.ts JSON 抽出の貪欲マッチ修正 + safeParse 失敗時ログ追加 | llm.ts | ✅ |
 
+## Phase 7: Code Review Fixes (4th pass) 🟡
+
+| ID | タスク | ファイル | 状態 |
+|----|--------|----------|------|
+| 7.1 | circuit.ts recordFailure `>= 3` → `=== 3`（openUntil 滑り防止） | circuit.ts | ✅ |
+| 7.2 | index.ts dynamic import に `.catch()` 追加 | index.ts | ✅ |
+| 7.3 | rerankChunks に preserveOrder オプション、vector_search はスコア順 | reranker.ts, tools.ts | ✅ |
+| 7.4 | redirect:manual → リダイレクト先を SSRF 検証してフォロー | fetch.ts | ✅ |
+| 7.5 | extractJson に文字列リテラル内 `{`/`}` スキップ処理 | llm.ts | ✅ |
+
 ### 不採用（検討済み）
 
 | ID | タスク | 理由 |

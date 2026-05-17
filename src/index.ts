@@ -8,21 +8,31 @@ import { registerTools } from "./tools.js";
 
 // Phase 2: Health checks (fire-and-forget — don't block startup)
 if (ENABLE_VECTOR_STORE) {
-  import("./vectorstore.js").then(({ getVectorStore }) =>
-    getVectorStore().then(
-      (store) => {
-        if (store) logger.info("Vector store ready");
-        else logger.warn("Vector store unavailable — running without it");
-      },
-      (e) => logger.warn("Vector store init failed: %s", (e as Error).message),
-    ),
-  );
-  import("./embedder.js").then(({ embedQuery }) =>
-    embedQuery("health check").then(
-      () => logger.info("TEI embedder reachable"),
-      (e) => logger.warn("TEI embedder unreachable: %s", (e as Error).message),
-    ),
-  );
+  import("./vectorstore.js")
+    .then(({ getVectorStore }) =>
+      getVectorStore().then(
+        (store) => {
+          if (store) logger.info("Vector store ready");
+          else logger.warn("Vector store unavailable — running without it");
+        },
+        (e) =>
+          logger.warn("Vector store init failed: %s", (e as Error).message),
+      ),
+    )
+    .catch((e) =>
+      logger.warn("Vector store module load failed: %s", (e as Error).message),
+    );
+  import("./embedder.js")
+    .then(({ embedQuery }) =>
+      embedQuery("health check").then(
+        () => logger.info("TEI embedder reachable"),
+        (e) =>
+          logger.warn("TEI embedder unreachable: %s", (e as Error).message),
+      ),
+    )
+    .catch((e) =>
+      logger.warn("Embedder module load failed: %s", (e as Error).message),
+    );
 }
 
 const server = new McpServer({

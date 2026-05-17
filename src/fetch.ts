@@ -422,7 +422,13 @@ const CHROME_UA =
 
 async function rawFetch(
   url: string,
+  redirectDepth = 0,
 ): Promise<{ title: string; url: string; text: string }> {
+  const MAX_REDIRECTS = 5;
+  if (redirectDepth > MAX_REDIRECTS) {
+    throw new Error(`Too many redirects`);
+  }
+
   const res = await fetch(url, {
     headers: {
       "User-Agent": CHROME_UA,
@@ -436,8 +442,10 @@ async function rawFetch(
 
   if (res.status >= 300 && res.status < 400) {
     const location = res.headers.get("location");
-    if (location) await assertPublicUrl(location).catch(() => {});
-    throw new Error(`Redirect blocked: ${res.status} → ${location}`);
+    if (!location) throw new Error(`Redirect with no Location: ${res.status}`);
+    const target = new URL(location, url).href;
+    await assertPublicUrl(target);
+    return rawFetch(target, redirectDepth + 1);
   }
   if (!res.ok)
     throw new Error(`Raw fetch error: ${res.status} ${res.statusText}`);
