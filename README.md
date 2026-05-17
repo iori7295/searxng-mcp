@@ -173,33 +173,7 @@ docker compose --profile full up -d               # + Firecrawl + Valkey (option
 
 # Then register with your MCP client:
 node build/src/index.js
-# or: npx @iori7295/searxng-mcp
 ```
-
-## Install
-
-### npm
-
-```bash
-npm install -g @iori7295/searxng-mcp
-```
-
-Or run directly with `npx`:
-
-```bash
-npx @iori7295/searxng-mcp
-```
-
-### From source
-
-```bash
-git clone https://github.com/iori7295/searxng-mcp.git
-cd searxng-mcp
-pnpm install
-pnpm build
-```
-
-Output: `build/src/index.js`
 
 ## MCP Client Configuration
 
@@ -209,8 +183,8 @@ The recommended approach uses `claude mcp add-json` to register the server with 
 
 ```bash
 claude mcp add-json searxng --scope user '{
-  "command": "npx",
-  "args": ["-y", "@iori7295/searxng-mcp"],
+  "command": "node",
+  "args": ["/path/to/searxng-mcp/build/src/index.js"],
   "env": {
     "SEARXNG_URL": "http://localhost:8081",
     "FIRECRAWL_URL": "http://localhost:3002",
