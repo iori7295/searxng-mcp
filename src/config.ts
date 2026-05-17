@@ -32,7 +32,7 @@ export const CHUNK_MAX_SIZE = Math.max(
   200,
 );
 export const SEARCH_MIN_INTERVAL_MS = Math.max(
-  Number.parseInt(process.env.SEARCH_MIN_INTERVAL_MS ?? "2000", 10) || 2000,
+  Number.parseInt(process.env.SEARCH_MIN_INTERVAL_MS ?? "500", 10) || 500,
   0,
 );
 export const RERANK_RECENCY_WEIGHT = (() => {

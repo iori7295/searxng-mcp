@@ -23,6 +23,15 @@ export interface SearxResult {
 
 export interface SearxResponse {
   results: SearxResult[];
+  infoboxes?: Array<{
+    infobox?: string;
+    content?: string;
+    urls?: Array<{ title?: string; url?: string }>;
+    attributes?: Array<{ label?: string; value?: string }>;
+  }>;
+  answers?: string[];
+  suggestions?: string[];
+  corrections?: string[];
 }
 
 export interface FirecrawlScrapeResponse {
@@ -124,6 +133,14 @@ export const SummarySchema = z.object({
   summary: z.string().default(""),
   citations: z.array(CitationSchema).default([]),
 });
+
+export interface SearxSearchReturn {
+  results: SearxResult[];
+  infoboxes?: SearxResponse["infoboxes"];
+  answers?: string[];
+  suggestions?: string[];
+  corrections?: string[];
+}
 
 export const CategorySchema = z
   .enum([

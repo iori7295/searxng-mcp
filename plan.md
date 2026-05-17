@@ -7,65 +7,53 @@
 3. **LLM コンテキスト削減** — page 全体ではなくクエリ関連チャンクのみを渡す
 4. **堅牢化** — SSRF・型安全・並行性のバグを潰す
 
-## Phase 1-3 ✅
+## Phase 1-7 ✅
 
-既存実装済み（2025-05-16 完了）。
+既存実装済み（2025-05-17 完了）。Phase 4-7 はコードレビュー4回分の修正。
 
-## Phase 4: Code Review Fixes (1st pass) ✅
+## Phase 8: Linkup 対抗 — 設定最適化 + 検索カバレッジ改善 🟡
 
-コードレビュー検証後に抽出した修正項目。2025-05-17 完了。
-
-| ID | タスク | ファイル | 状態 |
-|----|--------|----------|------|
-| 4.1 | rawFetch ストリーミングバッファ制限 | fetch.ts | ✅ |
-| 4.2 | 起動時 health check を fire-and-forget 化 | index.ts | ✅ |
-| 4.3 | cacheSet("", 0) → cacheDel | cache.ts, search.ts, fetch.ts | ✅ |
-| 4.4 | vectorstore SQL injection 対策 | vectorstore.ts | ✅ |
-| 4.5 | parseInt NaN ガード + console.warn 修正 | config.ts | ✅ |
-| 4.6 | applyDomainFilters 一発スキャン化 | domains.ts | ✅ |
-| 4.7 | tokenizer 遅延初期化 | tokenizer.ts | ✅ |
-
-## Phase 5: Code Review Fixes (2nd pass) 🟡（本タスク）
-
-2回目のコードレビュー検証後に抽出した修正項目 + 不採用判断の記録。
-
-### 修正予定
+SearXNG は 251 のエンジンを内蔵しているが、現状 google と wikipedia のみが稼働。
+engine の設定チューニングと throttle 調整でコード変更なしに検索カバレッジを数倍にできる。
 
 | ID | タスク | ファイル | 状態 |
 |----|--------|----------|------|
-| 5.1 | domain フィルタバリデーション失敗時は空配列を返す（無警告通過しない） | vectorstore.ts | ✅ |
-| 5.2 | cacheClear DEL をバッチ分割 + UNLINK に変更 | cache.ts | ✅ |
-| 5.3 | indexToVectorStore .catch(() => {}) に logger.warn 追加 | fetch.ts | ✅ |
-| 5.4 | README に Crawl4AI を cascade 説明に追記 | README.md | ✅ |
-| 5.5 | domains.ts watcher コメント修正（再セットアップしないと明記） | domains.ts | ✅ |
+| 8.1 | SearXNG settings.yml で brave/duckduckgo/qwant 等の engine 有効化 | settings.yml (外部) | ⚠️ 要手動設定 |
+| 8.2 | SEARCH_MIN_INTERVAL_MS を 2000→500 に調整（自前 SearXNG 前提） | config.ts | ✅ |
 
-## Phase 6: Code Review Fixes (3rd pass) 🟡
+## Phase 9: 検索品質強化コア 🟡
 
-| ID | タスク | ファイル | 状態 |
-|----|--------|----------|------|
-| 6.1 | circuit breaker を独立モジュールに抽出（循環依存解消） | src/circuit.ts (new), fetch.ts, embedder.ts | ✅ |
-| 6.2 | getValkey のレースコンディション修正（shared connection promise） | cache.ts | ✅ |
-| 6.3 | llm.ts JSON 抽出の貪欲マッチ修正 + safeParse 失敗時ログ追加 | llm.ts | ✅ |
+Linkup 対抗と差別化を両立する中核機能群。
 
-## Phase 7: Code Review Fixes (4th pass) 🟡
+| ID | タスク | ファイル | 優先度 |
+|----|--------|----------|--------|
+| 9.1 | reranker type キャッシュ — Jina/TEI 検出を初回のみにし、毎リクエストの無駄な5秒タイムアウトを削除 | reranker.ts | **High** ✅ |
+| 9.2 | infoboxes / answers / suggestions 露出 — SearXNG 既存レスポンスの未使用フィールドを検索結果に追加 | types.ts, search.ts, tools.ts | **High** ✅ |
+| 9.3 | クロスクエリ知識 — LanceDB に既存の過去 fetch 結果を search 結果に織り込み、"past-fetched" マーク付きで表示 | search.ts, tools.ts | **High** ⬜ |
+| 9.4 | MMR 簡易多様化 — 同一ドメインの結果が上位に固まるのを防ぐ（ドメインベース簡易版、TEI 不要） | reranker.ts | Medium ✅ |
+| 9.5 | search_and_* の fetchPool 拡大 — rerank 対象プールが実質 6件 で止まっているのを改善 | tools.ts | Medium ✅ |
+| 9.6 | expand 時の RRF 無駄処理修正 — variants が空なら RRF をスキップ | search.ts | Low ✅ |
 
-| ID | タスク | ファイル | 状態 |
-|----|--------|----------|------|
-| 7.1 | circuit.ts recordFailure `>= 3` → `=== 3`（openUntil 滑り防止） | circuit.ts | ✅ |
-| 7.2 | index.ts dynamic import に `.catch()` 追加 | index.ts | ✅ |
-| 7.3 | rerankChunks に preserveOrder オプション、vector_search はスコア順 | reranker.ts, tools.ts | ✅ |
-| 7.4 | redirect:manual → リダイレクト先を SSRF 検証してフォロー | fetch.ts | ✅ |
-| 7.5 | extractJson に文字列リテラル内 `{`/`}` スキップ処理 | llm.ts | ✅ |
+### Phase 9 補足
 
-### 不採用（検討済み）
+- 9.1 は TEI ユーザーが毎リクエスト Jina → TEI fallback で **5秒ロス** している問題の修正
+- 9.3 が「無料セルフホストで有料に勝つ」差別化の本丸。他 MCP にはできない独自機能
+- 9.4 は全 MCP 検索サーバで未実装の差別化領域。ドメインベース簡易版で30行
+
+## Phase 10: さらなる強化 🟡
+
+| ID | タスク | ファイル | 優先度 |
+|----|--------|----------|--------|
+| 10.1 | chunker.ts separator 拡張（日本語句読点対応） | chunker.ts | Low ✅ |
+| 10.2 | formatResults surrogate pair 対策 | tools.ts | Low ✅ |
+| 10.3 | pdf-parse 動的 import の起動時 warmup | fetch.ts | Low ⬜ |
+| 10.4 | transformers.js fallback (TEI が無い環境向け in-process embedding) | embedder.ts | Low ⬜ |
+| 10.5 | background prefetch（注意: circuit breaker と排他制御必須） | search.ts, fetch.ts | Low ⬜ |
+
+## 不採用（検討済み）
 
 | ID | タスク | 理由 |
 |----|--------|------|
-| 5.x | throttle: 例外時にトークン消費 | 実害軽微。SearXNG ダウン時の他リクエスト遅延は数秒。修正コストに見合わない |
-| 5.x | pollCrawl4aiTask abort 応答性向上 | JS の仕様上 Promise リークは発生しない。最大2-5秒の応答遅延は polling 設計で許容範囲 |
-| 5.x | githubFetch branch 右削り探索 | GitHub API rate limit (60/h unauthenticated) の制約下で現状のワンショット試行 + fallback が現実的 |
-| 5.x | fetchCacheKey 集約 | 動作は正しい。cache.ts と fetch.ts の分散はコード品質領域で機能影響なし |
-| 5.x | parseInt \|\| default の 0 falsy | CACHE_TTL_SECONDS=0 は Redis EX 0 がエラーになる。他の変数も 0 設定は実用上不要。複雑化に見合わない |
-| 5.x | TextDecoder が UTF-8 固定 (Shift_JIS非対応) | 事前存在バグ、修正は非自明。現代のウェブはほぼ UTF-8。Defuddle/Readability の DOM 経路でも charset は気にしない |
-| 5.x | PDF Content-Length 事前チェック | 悪意ある巨大 PDF に対し現在の 5MB ストリーミング制限で十分。事前チェックは最適化の域 |
-| 5.x | clear_cache スコープの README 明記 | search:/fetch: プレフィックスで分離済み。共有 Valkey 運用は想定外。README が肥大化するだけ |
+| 9.3a | ONNX MiniML 常時稼働 | in-process embedding は起動時 +200MB / 2-5秒の cold start コスト。既存 TEI Docker が動いている環境では不要。fallback パスとして Phase 10.4 |
+| 9.3b | 純粋な snippet 拡張 (250→800) | search 単体の軽量性を損なう。代わりに 9.3 で過去 fetch 済みの結果があればその本文を snippet に注入する方式に再定義 |
+| 10.2a | throttle の bottleneck ライブラリ置き換え | 現状の手書き throttle で実用上問題なし。Phase 8 で 500ms に短縮するのでさらに緩和 |

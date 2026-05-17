@@ -15,7 +15,7 @@ export async function chunkPages(
   const s = new RecursiveCharacterTextSplitter({
     chunkSize: maxSize,
     chunkOverlap: overlap,
-    separators: ["\n\n", "\n", "。", ". ", " ", ""],
+    separators: ["\n\n", "\n", "。", "！", "？", ". ", "、", "; ", " ", ""],
   });
 
   const allChunks: TextChunk[] = [];

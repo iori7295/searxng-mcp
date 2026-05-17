@@ -7,7 +7,12 @@ import { fetchPage } from "./fetch.js";
 import { formatSummaryResult, summarizePages } from "./llm.js";
 import { rerankChunks, rerankWithFallback } from "./reranker.js";
 import { searxSearch } from "./search.js";
-import { CategorySchema, type SearxResult, TimeRangeSchema } from "./types.js";
+import {
+  CategorySchema,
+  type SearxResult,
+  type SearxSearchReturn,
+  TimeRangeSchema,
+} from "./types.js";
 import { hybridSearch } from "./vectorstore.js";
 
 const DomainProfileSchema = z
@@ -24,10 +29,45 @@ function formatResults(results: SearxResult[]): string {
     .map((r, i) => {
       const engine = r.engines?.[0] ?? r.engine ?? "unknown";
       const date = r.publishedDate ? ` [${r.publishedDate}]` : "";
-      const snippet = r.content ? `\n   ${r.content.slice(0, 250)}` : "";
+      const snippet = r.content
+        ? `\n   ${r.content.slice(0, 250).replace(/[\uD800-\uDBFF]$/, "")}`
+        : "";
       return `${i + 1}. ${r.title}${date}\n   URL: ${r.url}\n   Source: ${engine}${snippet}`;
     })
     .join("\n\n");
+}
+
+function formatSearchExtra(info: SearxSearchReturn): string {
+  const parts: string[] = [];
+  if (info.answers?.length) {
+    parts.push(`Answers:\n  ${info.answers.map((a) => `• ${a}`).join("\n  ")}`);
+  }
+  if (info.infoboxes?.length) {
+    for (const ib of info.infoboxes) {
+      const lines: string[] = [];
+      if (ib.infobox) lines.push(`## ${ib.infobox}`);
+      if (ib.content) lines.push(ib.content);
+      if (ib.attributes?.length) {
+        for (const attr of ib.attributes) {
+          if (attr.label && attr.value)
+            lines.push(`  ${attr.label}: ${attr.value}`);
+        }
+      }
+      if (ib.urls?.length) {
+        for (const u of ib.urls) {
+          if (u.url) lines.push(`  ${u.title ?? "Link"}: ${u.url}`);
+        }
+      }
+      if (lines.length) parts.push(lines.join("\n"));
+    }
+  }
+  if (info.suggestions?.length) {
+    parts.push(`Suggestions: ${info.suggestions.join(", ")}`);
+  }
+  if (info.corrections?.length) {
+    parts.push(`Did you mean: ${info.corrections.join(", ")}`);
+  }
+  return parts.length ? `${parts.join("\n\n")}\n\n` : "";
 }
 
 export function registerTools(server: McpServer): void {
@@ -74,11 +114,18 @@ export function registerTools(server: McpServer): void {
       );
       const ranked = await rerankWithFallback(
         query,
-        raw,
+        raw.results,
         num_results,
         time_range,
       );
-      return { content: [{ type: "text", text: formatResults(ranked) }] };
+      return {
+        content: [
+          {
+            type: "text",
+            text: formatSearchExtra(raw) + formatResults(ranked),
+          },
+        ],
+      };
     },
   );
 
@@ -117,7 +164,7 @@ export function registerTools(server: McpServer): void {
       domain_profile,
       expand,
     }) => {
-      const fetchPool = Math.max(fetch_count * 2, 5);
+      const fetchPool = Math.max(fetch_count * 3, 10);
       const raw = await searxSearch(
         query,
         category,
@@ -126,19 +173,19 @@ export function registerTools(server: McpServer): void {
         domain_profile,
         expand,
       );
-      if (raw.length === 0) {
+      if (raw.results.length === 0) {
         return { content: [{ type: "text", text: "No results found." }] };
       }
 
       const ranked = await rerankWithFallback(
         query,
-        raw,
+        raw.results,
         fetchPool,
         time_range,
       );
-      const searchText = formatResults(
-        ranked.slice(0, Math.max(fetch_count, 5)),
-      );
+      const searchText =
+        formatSearchExtra(raw) +
+        formatResults(ranked.slice(0, Math.max(fetch_count, 5)));
 
       // Divide the 8000-char budget evenly across fetched pages
       const maxCharsPerPage = Math.floor(8000 / fetch_count);
@@ -272,7 +319,7 @@ export function registerTools(server: McpServer): void {
       domain_profile,
       expand,
     }) => {
-      const fetchPool = Math.max(fetch_count * 2, 5);
+      const fetchPool = Math.max(fetch_count * 3, 10);
       const raw = await searxSearch(
         query,
         category,
@@ -281,19 +328,19 @@ export function registerTools(server: McpServer): void {
         domain_profile,
         expand,
       );
-      if (raw.length === 0) {
+      if (raw.results.length === 0) {
         return { content: [{ type: "text", text: "No results found." }] };
       }
 
       const ranked = await rerankWithFallback(
         query,
-        raw,
+        raw.results,
         fetchPool,
         time_range,
       );
-      const searchText = formatResults(
-        ranked.slice(0, Math.max(fetch_count, 5)),
-      );
+      const searchText =
+        formatSearchExtra(raw) +
+        formatResults(ranked.slice(0, Math.max(fetch_count, 5)));
 
       // Fetch top N pages; 4000 chars each (summarizer doesn't need the full 8000)
       const toFetch = ranked.slice(0, fetch_count);

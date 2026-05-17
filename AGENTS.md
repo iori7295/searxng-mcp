@@ -4,12 +4,13 @@ MCP server for private web search via a self-hosted SearXNG instance. Reranks re
 
 ## What it does
 
-Exposes five MCP tools:
+Exposes six MCP tools:
 
-- **`search`** — queries SearXNG, reranks results with a local ML model, returns top N structured results
+- **`search`** — queries SearXNG, reranks results with a local ML model, returns top N structured results with optional infoboxes/answers/suggestions
 - **`search_and_fetch`** — same as `search` but also fetches full content of the top result(s) via the fetch cascade
 - **`search_and_summarize`** — search, fetch, then synthesize a summary with citations via an OpenAI-compatible LLM
 - **`fetch_url`** — fetch and extract readable markdown from any public URL; GitHub URLs use the GitHub API (Issues/PRs include body + comments + reactions); PDF URLs are parsed via `pdf-parse`
+- **`vector_search`** — search previously fetched pages by semantic similarity (hybrid BM25+vector); requires `ENABLE_VECTOR_STORE=true`
 - **`clear_cache`** — purge the Valkey result cache (search, fetch, or both)
 
 ## Structure
@@ -20,14 +21,20 @@ src/
   tools.ts        # Tool definitions (schemas + handlers)
   search.ts       # SearXNG client
   fetch.ts        # Fetch cascade (Firecrawl → Crawl4AI → raw HTTP with PDF) + GitHub API (Issues/PRs structured)
-  reranker.ts     # Jina-compatible reranker client + recency weighting
+  reranker.ts     # Jina-compatible reranker client + recency weighting + MMR diversity
   llm.ts          # OpenAI-compatible LLM client (query expansion + summarization)
   cache.ts        # Valkey/Redis caching layer
   domains.ts      # Domain boost/block filtering + profiles
   config.ts       # Environment variable configuration
   types.ts        # Shared type definitions
+  logger.ts       # Pino stderr logger
+  circuit.ts      # Circuit breaker (shared across firecrawl, crawl4ai, tei-embed)
+  embedder.ts     # TEI embedding client (query + passage embedding)
+  vectorstore.ts  # LanceDB hybrid search (BM25+vector+RRF)
+  chunker.ts      # @langchain/textsplitters with Japanese-friendly separators
+  tokenizer.ts    # js-tiktoken token counter (lazy-initialized cl100k_base)
 tests/
-  *.test.ts       # Vitest unit tests (53 tests across 5 files)
+  *.test.ts       # Vitest unit tests (78 tests across 7 files)
 ```
 
 ## Dependencies

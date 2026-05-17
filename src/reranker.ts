@@ -50,16 +50,28 @@ async function callTeiRerank(
   return data.map((r) => ({ index: r.index, score: r.score ?? 0 }));
 }
 
+let rerankerType: "jina" | "tei" | "unknown" = "unknown";
+
 async function callReranker(
   query: string,
   documents: string[],
 ): Promise<ScoredItem[]> {
-  try {
+  if (rerankerType === "jina") {
     return await callJinaRerank(query, documents);
-  } catch {
-    // Jina not available — try TEI
   }
-  return await callTeiRerank(query, documents);
+  if (rerankerType === "tei") {
+    return await callTeiRerank(query, documents);
+  }
+  // First call: auto-detect Jina then TEI
+  try {
+    const result = await callJinaRerank(query, documents);
+    rerankerType = "jina";
+    return result;
+  } catch {
+    const result = await callTeiRerank(query, documents);
+    rerankerType = "tei";
+    return result;
+  }
 }
 
 async function rerank(
@@ -89,6 +101,34 @@ async function rerank(
   return scored.slice(0, topN).map((s) => s.result);
 }
 
+/** Domain-aware MMR: limit same-domain results to maxPerDomain, keeping top-ranked diversity. */
+export function mmrDiversify(
+  results: SearxResult[],
+  topN: number,
+  maxPerDomain = 2,
+): SearxResult[] {
+  const domainCount = new Map<string, number>();
+  const diverse: SearxResult[] = [];
+  for (const r of results) {
+    if (diverse.length >= topN) break;
+    const domain = extractDomain(r.url);
+    const count = domainCount.get(domain) ?? 0;
+    if (count < maxPerDomain) {
+      domainCount.set(domain, count + 1);
+      diverse.push(r);
+    }
+  }
+  return diverse;
+}
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 export async function rerankWithFallback(
   query: string,
   results: SearxResult[],
@@ -97,10 +137,11 @@ export async function rerankWithFallback(
 ): Promise<SearxResult[]> {
   const applyRecency = !timeRange; // skip when caller already filtered by date
   try {
-    return await rerank(query, results, topN, applyRecency);
+    const ranked = await rerank(query, results, topN, applyRecency);
+    return mmrDiversify(ranked, topN);
   } catch {
-    // Reranker unavailable — fall back to SearXNG order
-    return results.slice(0, topN);
+    // Reranker unavailable — fall back to SearXNG order with MMR
+    return mmrDiversify(results, topN);
   }
 }
 
