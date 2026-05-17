@@ -1,4 +1,10 @@
-import { cacheDel, cacheGet, cacheSet, searchCacheKey } from "./cache.js";
+import {
+  cacheDel,
+  cacheGet,
+  cacheSet,
+  fetchCacheKey,
+  searchCacheKey,
+} from "./cache.js";
 import {
   CACHE_TTL_SECONDS,
   EXPAND_QUERIES_DEFAULT,
@@ -91,8 +97,9 @@ export async function searxSearch(
       const parsed = JSON.parse(cached) as SearxSearchReturn;
       // Domain filtering applied after cache retrieval so profile changes take effect immediately
       const filtered = applyDomainFilters(parsed.results, domainProfile);
+      const enriched = await enrichWithFetchedContent(filtered);
       return {
-        results: filtered,
+        results: enriched,
         infoboxes: parsed.infoboxes,
         answers: parsed.answers,
         suggestions: parsed.suggestions,
@@ -127,8 +134,9 @@ export async function searxSearch(
     // Skip RRF if no variants were generated
     if (variants.length === 0) {
       const filtered = applyDomainFilters(original.results, domainProfile);
+      const enriched = await enrichWithFetchedContent(filtered);
       return {
-        results: filtered,
+        results: enriched,
         infoboxes: original.response.infoboxes,
         answers: original.response.answers,
         suggestions: original.response.suggestions,
@@ -177,8 +185,9 @@ export async function searxSearch(
     await cacheSet(key, JSON.stringify(cacheEntry), CACHE_TTL_SECONDS);
 
     const filtered = applyDomainFilters(merged, domainProfile);
+    const enriched = await enrichWithFetchedContent(filtered);
     return {
-      results: filtered,
+      results: enriched,
       infoboxes: original.response.infoboxes,
       answers: original.response.answers,
       suggestions: original.response.suggestions,
@@ -199,11 +208,38 @@ export async function searxSearch(
   };
   await cacheSet(key, JSON.stringify(cacheEntry), CACHE_TTL_SECONDS);
 
+  const filtered = applyDomainFilters(raw.results, domainProfile);
+  const enriched = await enrichWithFetchedContent(filtered);
   return {
-    results: applyDomainFilters(raw.results, domainProfile),
+    results: enriched,
     infoboxes: raw.response.infoboxes,
     answers: raw.response.answers,
     suggestions: raw.response.suggestions,
     corrections: raw.response.corrections,
   };
+}
+
+/** For each result, check if we already have full content in the fetch cache.
+ *  If so, replace the snippet with "[Previously fetched]" + cached text. */
+async function enrichWithFetchedContent(
+  results: SearxResult[],
+): Promise<SearxResult[]> {
+  return Promise.all(
+    results.map(async (r) => {
+      const cached = await cacheGet(fetchCacheKey(r.url));
+      if (!cached) return r;
+      try {
+        const parsed = JSON.parse(cached) as { text?: string };
+        if (parsed.text && parsed.text.length > 100) {
+          return {
+            ...r,
+            content: `[Previously fetched]\n${parsed.text.slice(0, 800).replace(/[\uD800-\uDBFF]$/, "")}`,
+          };
+        }
+      } catch {
+        // Corrupted entry — skip enrichment
+      }
+      return r;
+    }),
+  );
 }

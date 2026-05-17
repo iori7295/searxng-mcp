@@ -29,7 +29,7 @@ Linkup 対抗と差別化を両立する中核機能群。
 |----|--------|----------|--------|
 | 9.1 | reranker type キャッシュ — Jina/TEI 検出を初回のみにし、毎リクエストの無駄な5秒タイムアウトを削除 | reranker.ts | **High** ✅ |
 | 9.2 | infoboxes / answers / suggestions 露出 — SearXNG 既存レスポンスの未使用フィールドを検索結果に追加 | types.ts, search.ts, tools.ts | **High** ✅ |
-| 9.3 | クロスクエリ知識 — LanceDB に既存の過去 fetch 結果を search 結果に織り込み、"past-fetched" マーク付きで表示 | search.ts, tools.ts | **High** ⬜ |
+| 9.3 | クロスクエリ知識 — 過去 fetch 結果の Valkey cache を search 結果に織り込み、"Previously fetched" マーク付きで表示（ENABLE_VECTOR_STORE 不要） | search.ts | **High** ✅ |
 | 9.4 | MMR 簡易多様化 — 同一ドメインの結果が上位に固まるのを防ぐ（ドメインベース簡易版、TEI 不要） | reranker.ts | Medium ✅ |
 | 9.5 | search_and_* の fetchPool 拡大 — rerank 対象プールが実質 6件 で止まっているのを改善 | tools.ts | Medium ✅ |
 | 9.6 | expand 時の RRF 無駄処理修正 — variants が空なら RRF をスキップ | search.ts | Low ✅ |
