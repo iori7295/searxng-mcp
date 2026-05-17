@@ -1,3 +1,4 @@
+import PQueue from "p-queue";
 import {
   cacheDel,
   cacheGet,
@@ -16,16 +17,11 @@ import { expandQuery } from "./llm.js";
 import { logger } from "./logger.js";
 import type { SearxResponse, SearxResult, SearxSearchReturn } from "./types.js";
 
-let nextAvailable = 0;
-
-async function throttle(): Promise<void> {
-  const now = Date.now();
-  const wait = Math.max(0, nextAvailable - now);
-  nextAvailable = Math.max(now, nextAvailable) + SEARCH_MIN_INTERVAL_MS;
-  if (wait > 0) {
-    await new Promise<void>((r) => setTimeout(r, wait));
-  }
-}
+// Rate limiter: 1 request per SEARCH_MIN_INTERVAL_MS (race-free, ordered queue)
+const searchQueue = new PQueue({
+  interval: SEARCH_MIN_INTERVAL_MS,
+  intervalCap: 1,
+});
 
 export async function searxSearchSingle(
   query: string,
@@ -33,23 +29,24 @@ export async function searxSearchSingle(
   fetchCount: number,
   timeRange?: string,
 ): Promise<SearxResult[]> {
-  await throttle();
-  const params = new URLSearchParams({
-    q: query,
-    format: "json",
-    categories: category,
-    pageno: "1",
-  });
-  if (timeRange) params.set("time_range", timeRange);
+  return searchQueue.add(async () => {
+    const params = new URLSearchParams({
+      q: query,
+      format: "json",
+      categories: category,
+      pageno: "1",
+    });
+    if (timeRange) params.set("time_range", timeRange);
 
-  const res = await fetch(`${SEARXNG_URL}/search?${params}`, {
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok)
-    throw new Error(`SearXNG error: ${res.status} ${res.statusText}`);
+    const res = await fetch(`${SEARXNG_URL}/search?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok)
+      throw new Error(`SearXNG error: ${res.status} ${res.statusText}`);
 
-  const data = (await res.json()) as SearxResponse;
-  return data.results.slice(0, fetchCount);
+    const data = (await res.json()) as SearxResponse;
+    return data.results.slice(0, fetchCount);
+  });
 }
 
 async function searxSearchSingleRaw(
@@ -58,22 +55,23 @@ async function searxSearchSingleRaw(
   _fetchCount: number,
   timeRange?: string,
 ): Promise<SearxResponse> {
-  await throttle();
-  const params = new URLSearchParams({
-    q: query,
-    format: "json",
-    categories: category,
-    pageno: "1",
-  });
-  if (timeRange) params.set("time_range", timeRange);
+  return searchQueue.add(async () => {
+    const params = new URLSearchParams({
+      q: query,
+      format: "json",
+      categories: category,
+      pageno: "1",
+    });
+    if (timeRange) params.set("time_range", timeRange);
 
-  const res = await fetch(`${SEARXNG_URL}/search?${params}`, {
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok)
-    throw new Error(`SearXNG error: ${res.status} ${res.statusText}`);
+    const res = await fetch(`${SEARXNG_URL}/search?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok)
+      throw new Error(`SearXNG error: ${res.status} ${res.statusText}`);
 
-  return (await res.json()) as SearxResponse;
+    return (await res.json()) as SearxResponse;
+  });
 }
 
 export async function searxSearch(
@@ -233,7 +231,7 @@ async function enrichWithFetchedContent(
         if (parsed.text && parsed.text.length > 100) {
           return {
             ...r,
-            content: `[Previously fetched]\n${parsed.text.slice(0, 800).replace(/[\uD800-\uDBFF]$/, "")}`,
+            content: `[Previously fetched]\n${Array.from(parsed.text).slice(0, 800).join("")}`,
           };
         }
       } catch {

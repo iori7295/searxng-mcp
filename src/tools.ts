@@ -30,7 +30,7 @@ function formatResults(results: SearxResult[]): string {
       const engine = r.engines?.[0] ?? r.engine ?? "unknown";
       const date = r.publishedDate ? ` [${r.publishedDate}]` : "";
       const snippet = r.content
-        ? `\n   ${r.content.slice(0, 250).replace(/[\uD800-\uDBFF]$/, "")}`
+        ? `\n   ${Array.from(r.content).slice(0, 250).join("")}`
         : "";
       return `${i + 1}. ${r.title}${date}\n   URL: ${r.url}\n   Source: ${engine}${snippet}`;
     })

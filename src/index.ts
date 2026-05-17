@@ -1,10 +1,22 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Agent, setGlobalDispatcher } from "undici";
 import pkg from "../package.json" with { type: "json" };
 import { ENABLE_VECTOR_STORE } from "./config.js";
 import { logger } from "./logger.js";
 import { registerTools } from "./tools.js";
+
+// Global HTTP keep-alive: reduces TCP/TLS handshake overhead for repeated calls
+// to SearXNG, Firecrawl, TEI, LLM, etc.
+setGlobalDispatcher(
+  new Agent({
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 60_000,
+    connections: 32,
+    pipelining: 1,
+  }),
+);
 
 // Phase 2: Health checks (fire-and-forget — don't block startup)
 if (ENABLE_VECTOR_STORE) {

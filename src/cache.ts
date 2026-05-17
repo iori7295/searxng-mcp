@@ -16,15 +16,18 @@ export async function getValkey(): Promise<Valkey | null> {
     const client = new Valkey(VALKEY_URL, {
       lazyConnect: true,
       enableReadyCheck: false,
+      maxRetriesPerRequest: null,
+      retryStrategy(times: number) {
+        // Retry with exponential backoff, cap at 10s
+        const delay = Math.min(100 * 2 ** times, 10_000);
+        return delay;
+      },
     });
     client.on("error", () => {
-      // Silently disconnect on error — caching is best-effort
-      try {
-        client.disconnect();
-      } catch {
-        // Best-effort cleanup
-      }
-      valkey = null;
+      // iovalkey auto-reconnects via retryStrategy
+    });
+    client.on("reconnecting", () => {
+      logger.warn("Cache reconnecting...");
     });
     await client.connect();
     valkey = client;

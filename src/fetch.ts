@@ -314,7 +314,8 @@ async function firecrawlScrape(
     throw new Error(`Firecrawl error: ${res.status} ${res.statusText}`);
   }
 
-  const data = (await res.json()) as FirecrawlScrapeResponse;
+  const body = await readBodyText(res, FETCH_BUFFER);
+  const data = JSON.parse(body) as FirecrawlScrapeResponse;
 
   if (!data.success || !data.data) {
     throw new Error(data.error ?? "Firecrawl returned no data");
@@ -347,7 +348,8 @@ async function pollCrawl4aiTask(
       const resp = await fetch(`${CRAWL4AI_URL}/task/${taskId}`, { signal });
       if (!resp.ok) return null;
 
-      const data = (await resp.json()) as Record<string, unknown>;
+      const body = await readBodyText(resp, FETCH_BUFFER);
+      const data = JSON.parse(body) as Record<string, unknown>;
       if (data.status === "completed") {
         const result = data.result as Record<string, unknown> | null;
         const md = result?.markdown as Record<string, string> | null;
@@ -387,7 +389,8 @@ async function crawl4aiFetch(
     });
 
     if (!resp.ok) return null;
-    const data = (await resp.json()) as Record<string, unknown>;
+    const body = await readBodyText(resp, FETCH_BUFFER);
+    const data = JSON.parse(body) as Record<string, unknown>;
 
     // Synchronous response — results returned directly
     if (Array.isArray(data.results) && data.results.length > 0) {
@@ -441,7 +444,7 @@ async function rawFetch(
   });
 
   if (res.status >= 300 && res.status < 400) {
-    const location = res.headers.get("location");
+    const location = res.headers.get("location")?.trim();
     if (!location) throw new Error(`Redirect with no Location: ${res.status}`);
     const target = new URL(location, url).href;
     await assertPublicUrl(target);

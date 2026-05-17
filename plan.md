@@ -50,6 +50,25 @@ Linkup 対抗と差別化を両立する中核機能群。
 | 10.4 | transformers.js fallback (TEI が無い環境向け in-process embedding) | embedder.ts | Low ⬜ |
 | 10.5 | background prefetch（注意: circuit breaker と排他制御必須） | search.ts, fetch.ts | Low ⬜ |
 
+## Phase 11: 最終コードレビュー対応 🟡
+
+| ID | タスク | ファイル | 優先度 |
+|----|--------|----------|--------|
+| 11.1 | undici globalDispatcher keep-alive 設定 (新規依存ゼロ) | index.ts | ★★★ ✅ |
+| 11.2 | vectorstore where AND 結合 (domain + sinceDays 上書きバグ修正) | vectorstore.ts | ★★★ ✅ |
+| 11.3 | throttle → p-queue 置換 (レースコンディション解消) | search.ts | ★★★ ✅ |
+| 11.4 | SSRF TOCTOU (undici Agent connect フック) | fetch.ts | ★★★ ⬜ |
+| 11.5 | jsonrepair 導入 (extractJson 置換) | llm.ts | ★★★ ✅ |
+| 11.6 | Valkey retryStrategy (自動再接続) | cache.ts | ★★ ✅ |
+| 11.7 | JSON 応答サイズ制限 (Firecrawl/Crawl4AI) | fetch.ts | ★★ ✅ |
+| 11.8 | rerank chunk 上限 64 (TEI 413 対策) | llm.ts | ★★ ✅ |
+| 11.9 | Zod safeParse for SearXNG 応答 | search.ts | ★★ ⬜ |
+| 11.10 | pino redact (API キーマスク) | logger.ts | ★★ ✅ |
+| 11.11 | redirect location.trim() | fetch.ts | ★ ✅ |
+| 11.12 | surrogate pair Array.from 対応 | tools.ts, search.ts | ★ ✅ |
+| 11.13 | linkedom document 共有 (Defuddle/Readability) | fetch.ts | ★ ⬜ |
+| 11.14 | tokenizer → gpt-tokenizer | tokenizer.ts | ★ ⬜ |
+
 ## 不採用（検討済み）
 
 | ID | タスク | 理由 |

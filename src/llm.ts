@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 import { chunkPages, type TextChunk } from "./chunker.js";
 import {
   LLM_API_KEY,
@@ -70,9 +71,16 @@ export async function expandQuery(query: string): Promise<string[]> {
 }
 
 /** Extract first valid JSON object from LLM response text.
- *  Scans for balanced braces with string literal awareness:
- *  braces inside "..." are ignored so e.g. {"k": "} "} parses correctly. */
+ *  Uses jsonrepair to handle trailing commas, single quotes, comments, etc. */
 function extractJson(content: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(jsonrepair(content));
+    if (typeof parsed === "object" && parsed !== null)
+      return parsed as Record<string, unknown>;
+  } catch {
+    // jsonrepair or JSON.parse failed — try brace balancing as fallback
+  }
+  // Fallback: scan for balanced braces with string literal awareness
   let start = 0;
   for (;;) {
     start = content.indexOf("{", start);
@@ -90,7 +98,8 @@ function extractJson(content: string): Record<string, unknown> | null {
       if (depth === 0) {
         try {
           const parsed = JSON.parse(content.slice(start, i + 1));
-          if (typeof parsed === "object" && parsed !== null) return parsed;
+          if (typeof parsed === "object" && parsed !== null)
+            return parsed as Record<string, unknown>;
         } catch {
           // Not valid JSON — continue to next {
         }
@@ -112,9 +121,11 @@ export async function summarizePages(
 
   // Chunk pages → rerank → top chunks only (avoids lost-in-the-middle)
   const chunks = await chunkPages(pages);
+  // Cap reranker input to 64 chunks (TEI 413 protection)
+  const rerankPool = chunks.length > 64 ? chunks.slice(0, 64) : chunks;
   let selectedChunks: TextChunk[];
   try {
-    selectedChunks = await rerankChunks(query, chunks, 5, pages);
+    selectedChunks = await rerankChunks(query, rerankPool, 5, pages);
   } catch {
     selectedChunks = pages.map((p, i) => ({
       text: p.text.slice(0, 1000),

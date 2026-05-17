@@ -95,10 +95,9 @@ export async function hybridSearch(
       .limit(topK * 4)
       .rerank(new Reranker());
 
-    // Metadata filters
+    // Metadata filters (AND-joined to avoid LanceDB where-override)
+    const clauses: string[] = [];
     if (filters?.domain) {
-      // Strict validation: only allow valid hostname characters
-      // to prevent SQL injection via the WHERE clause
       if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(filters.domain)) {
         logger.warn(
           "Invalid domain filter, returning empty: %s",
@@ -106,12 +105,13 @@ export async function hybridSearch(
         );
         return [];
       }
-      q = q.where(`domain = '${filters.domain.replace(/'/g, "''")}'`);
+      clauses.push(`domain = '${filters.domain.replace(/'/g, "''")}'`);
     }
     if (filters?.sinceDays) {
       const cutoff = Date.now() - filters.sinceDays * 86_400_000;
-      q = q.where(`fetched_at > ${cutoff}`);
+      clauses.push(`fetched_at > ${cutoff}`);
     }
+    if (clauses.length > 0) q = q.where(clauses.join(" AND "));
 
     const results = await q.toArray();
     return results.slice(0, topK) as Record<string, unknown>[];
