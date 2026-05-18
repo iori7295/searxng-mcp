@@ -1,7 +1,7 @@
 {
   "name": "@iori7295/searxng-mcp",
   "version": "3.5.1",
-  "description": "MCP server for SearXNG — private web search for Claude Code and LibreChat",
+  "description": "Private web search MCP server for Claude Code, LibreChat, OpenCode — powered by SearXNG with local ML reranking, SSRF-safe fetch, and optional vector search.",
   "main": "build/src/index.js",
   "bin": {
     "searxng-mcp": "build/src/index.js"
@@ -25,7 +25,10 @@
   "keywords": [
     "searxng",
     "mcp",
-    "search"
+    "search",
+    "private-search",
+    "web-search",
+    "ai-agent"
   ],
   "author": "iori7295",
   "license": "MIT",
@@ -72,5 +75,7 @@
       "fast-uri": ">=3.1.2",
       "ip-address": ">=10.1.1"
     }
-  }
+  },
+  "homepage": "https://github.com/iori7295/searxng-mcp#readme",
+  "bugs": "https://github.com/iori7295/searxng-mcp/issues"
 }

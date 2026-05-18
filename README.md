@@ -3,6 +3,8 @@
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-6B57FF?logo=claude&logoColor=white)](https://claude.ai/code)
 [![CI](https://github.com/iori7295/searxng-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/iori7295/searxng-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm](https://img.shields.io/npm/v/%40iori7295%2Fsearxng-mcp?color=%23cb0000)](https://www.npmjs.com/package/@iori7295/searxng-mcp)
+[![npm downloads](https://img.shields.io/npm/dw/%40iori7295%2Fsearxng-mcp?color=%23cb0000)](https://www.npmjs.com/package/@iori7295/searxng-mcp)
 
 An MCP server for private web search via a self-hosted [SearXNG](https://github.com/searxng/searxng) instance. Results are reranked by a local ML model (FlashRank, Jina, or TEI), with **domain-aware MMR diversification** to avoid same-source bias. Full-page content is fetched via a three-tier cascade, **cross-query knowledge** surfaces previously fetched content in future searches, and an optional LLM provides query expansion and synthesized summaries. Supports optional **hybrid vector search** with LanceDB + TEI embeddings for semantic chunk retrieval. **Infoboxes, answers, and suggestions** from SearXNG are surfaced as structured data.
 
@@ -165,26 +167,75 @@ cp .env.example .env
 
 ## Quick start
 
+### Option 1: npm (recommended)
+
+```bash
+# Install globally
+npm install -g @iori7295/searxng-mcp
+
+# Or run directly without installing
+npx @iori7295/searxng-mcp
+```
+
+### Option 2: git clone
+
 ```bash
 git clone https://github.com/iori7295/searxng-mcp.git
 cd searxng-mcp
+pnpm install && pnpm build
+```
+
+### Prerequisites (both options)
+
+Bring up the required SearXNG instance and optional services:
+
+```bash
 docker compose up -d                              # SearXNG (required)
 docker compose --profile full up -d               # + Firecrawl + Valkey (optional)
-
-# Then register with your MCP client:
-node build/src/index.js
 ```
 
 ## MCP Client Configuration
 
-### Claude Code (CLI)
+### npx (no install)
 
-The recommended approach uses `claude mcp add-json` to register the server with full env var support:
+Use `npx` to run the latest version without installing anything:
+
+```json
+{
+  "command": "npx",
+  "args": ["--yes", "@iori7295/searxng-mcp"],
+  "env": {
+    "SEARXNG_URL": "http://localhost:8081",
+    "FIRECRAWL_URL": "http://localhost:3002",
+    "RERANKER_URL": "http://localhost:8787",
+    "LLM_BASE_URL": "https://opencode.ai/zen/go/v1",
+    "LLM_API_KEY": "sk-...",
+    "LLM_MODEL_EXPAND": "deepseek-v4-flash",
+    "LLM_MODEL_SUMMARY": "deepseek-v4-flash",
+    "VALKEY_URL": "redis://localhost:6379"
+  }
+}
+```
+
+### npm global install
+
+```json
+{
+  "command": "searxng-mcp",
+  "args": [],
+  "env": {
+    "SEARXNG_URL": "http://localhost:8081",
+    ...
+  }
+}
+```
+
+### Claude Code (CLI)
 
 ```bash
 claude mcp add-json searxng --scope user '{
-  "command": "node",
-  "args": ["/path/to/searxng-mcp/build/src/index.js"],
+  "command": "npx",
+  "args": ["--yes", "@iori7295/searxng-mcp"],
   "env": {
     "SEARXNG_URL": "http://localhost:8081",
     "FIRECRAWL_URL": "http://localhost:3002",
@@ -204,9 +255,10 @@ claude mcp add-json searxng --scope user '{
 mcpServers:
   searxng:
     type: stdio
-    command: node
+    command: npx
     args:
-      - /path/to/searxng-mcp/build/src/index.js
+      - --yes
+      - @iori7295/searxng-mcp
     env:
       SEARXNG_URL: http://localhost:8081
       FIRECRAWL_URL: http://localhost:3002
