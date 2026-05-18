@@ -1,6 +1,6 @@
 {
   "name": "@iori7295/searxng-mcp",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "MCP server for SearXNG — private web search for Claude Code and LibreChat",
   "main": "build/src/index.js",
   "bin": {
