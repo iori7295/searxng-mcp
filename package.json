@@ -1,6 +1,6 @@
 {
   "name": "@iori7295/searxng-mcp",
-  "version": "3.5.1",
+  "version": "3.5.2",
   "description": "Private web search MCP server for Claude Code, LibreChat, OpenCode — powered by SearXNG with local ML reranking, SSRF-safe fetch, and optional vector search.",
   "main": "build/src/index.js",
   "bin": {
