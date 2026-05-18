@@ -54,12 +54,25 @@ Optional services (server degrades gracefully without these):
 | Crawl4AI | `CRAWL4AI_URL` | Fetch fallback for bot-blocked pages (tier 2) |
 | Valkey/Redis | `VALKEY_URL` | Result caching |
 | LLM (OpenAI-compatible) | `LLM_BASE_URL` | Query expansion + summarization |
+| TEI Embedding | `EMBEDDING_URL` | Vector embeddings for `vector_search` + auto-indexing |
+| LanceDB | `LANCEDB_PATH` | Hybrid vector store (BM25+vector) |
 
 ## Build and run
 
 ```bash
+# Option 1: npx (no install)
+npx @iori7295/searxng-mcp
+
+# Option 2: npm global install
+npm install -g @iori7295/searxng-mcp
+searxng-mcp
+
+# Option 3: from source
+git clone https://github.com/iori7295/searxng-mcp.git
+cd searxng-mcp
+docker compose up -d        # SearXNG (required)
 pnpm install
-pnpm build        # tsc → build/
+pnpm build                  # tsc → build/
 node build/src/index.js
 ```
 
